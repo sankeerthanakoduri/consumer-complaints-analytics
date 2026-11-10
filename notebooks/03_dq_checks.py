@@ -30,6 +30,13 @@ check('state_not_two_letters', 'warning', 'state IS NOT NULL AND LENGTH(state) <
 check('zip_missing', 'warning', 'zip_code IS NULL', 'Missing ZIP code')
 check('slow_to_reach_company', 'warning', 'days_to_company > 30', 'More than 30 days from receipt to sending to the company')
 
+# Placeholder words must not survive into silver
+ph = "('NONE','N/A','NA','NULL','NAN')"
+check('placeholder_text_left', 'error',
+      f"UPPER(state) IN {ph} OR UPPER(zip_code) IN {ph} OR UPPER(sub_issue) IN {ph} OR UPPER(company_public_response) IN {ph} OR UPPER(tags) IN {ph}",
+      'Placeholder words like None must be converted to NULL in silver')
+check('zip_fully_masked', 'warning', "zip_code = 'XXXXX'", 'ZIP fully masked by the CFPB for privacy')
+
 # Uniqueness and reconciliation
 distinct_ids = spark.table(silver).select('complaint_id').distinct().count()
 dups = total - distinct_ids
